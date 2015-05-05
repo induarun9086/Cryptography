@@ -59,6 +59,12 @@
 #define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_SHIFT ((uint32)10)
 #define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_SHIFT ((uint32)10)
 
+#define A51_CIPHER_LFSR1_MSB_MASK ((uint32)0x00040000)
+#define A51_CIPHER_LFSR2_MSB_MASK ((uint32)0x00200000)
+#define A51_CIPHER_LFSR3_MSB_MASK ((uint32)0x00400000)
+
+#define A51_CIPHER_KEY_STREAM_ARRAY_LENGTH (29)
+
 typedef unsigned char uint8;
 typedef unsigned short int uint16;
 typedef unsigned int uint32;
@@ -78,12 +84,16 @@ struct A51Cipher {
 	uint64 sessionKey;
 
 	uint32 frameCounter;
+
+	uint8 keyStream[A51_CIPHER_KEY_STREAM_ARRAY_LENGTH];
+	uint8 dataStream[A51_CIPHER_KEY_STREAM_ARRAY_LENGTH];
 };
 
 void initA51Cipher(struct A51Cipher* pa51Cipher);
 
 void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
-		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock);
+		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock,
+		bool generateKeyStream);
 
 void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
 		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
@@ -96,5 +106,7 @@ void clockRegisterTwo(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
 
 void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
+
+void generateKeyStream(struct A51Cipher* pa51Cipher);
 
 #endif /* A51_CIPHER_H_ */

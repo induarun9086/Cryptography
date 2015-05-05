@@ -44,6 +44,7 @@
 								<option id="gnu.c.compiler.macosx.exe.debug.option.debugging.level.329471989" name="Debug Level" superClass="gnu.c.compiler.macosx.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.dialect.std.1187540657" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" value="gnu.c.compiler.dialect.c99" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.misc.other.1695896919" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -stdlib=libstdc++" valueType="string"/>
+								<option id="gnu.c.compiler.option.preprocessor.preprocess.1449406508" name="Preprocess only (-E)" superClass="gnu.c.compiler.option.preprocessor.preprocess" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.512761721" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 						</toolChain>

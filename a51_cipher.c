@@ -21,23 +21,33 @@ int main(int argc, char* argv[]) {
 
 	input_file = fopen("DSC01338.JPG", "rb");
 
+
+
 	if (input_file != NULL) {
 		a51Cipher.sessionKey = 0x5cd11d783ab2f472;
 		initA51Cipher(&a51Cipher);
+		generateKeyStream(&a51Cipher);
+		fread(&a51Cipher.dataStream[0],A51_CIPHER_KEY_STREAM_ARRAY_LENGTH,1,input_file);
 	}
 	return 0;
 }
 
 void initA51Cipher(struct A51Cipher* pa51Cipher) {
 	runLoop(pa51Cipher, pa51Cipher->sessionKey, A51_CIPHER_SESSIONKEY_MASK,
-			A51_CIPHER_SESSIONKEY_LENGTH, false);
+	A51_CIPHER_SESSIONKEY_LENGTH, false, false);
 	runLoop(pa51Cipher, pa51Cipher->frameCounter, A51_CIPHER_FRAMECOUNTER_MASK,
-			A51_CIPHER_FRAMECOUNTER_LENGTH, false);
-	runLoop(pa51Cipher, 0, 0, 100, true);
+	A51_CIPHER_FRAMECOUNTER_LENGTH, false, false);
+	runLoop(pa51Cipher, 0, 0, 100, true, false);
+}
+
+void generateKeyStream(struct A51Cipher* pa51Cipher) {
+	runLoop(pa51Cipher, 0, 0, 228, true, true);
+
 }
 
 void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
-		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock) {
+		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock,
+		bool generateKeyStream) {
 	uint32 i;
 
 	for (i = 0; i < keystreamLength; i++) {
@@ -54,7 +64,30 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 					keystreamLength);
 		}
 
+		if (generateKeyStream) {
+			uint32 xorSum = 0;
+			xorSum += ((pa51Cipher->lfsr1 & A51_CIPHER_LFSR1_MSB_MASK)
+					>> (A51_CIPHER_LFSR1_LENGTH - 1));
+			xorSum += ((pa51Cipher->lfsr2 & A51_CIPHER_LFSR2_MSB_MASK)
+					>> (A51_CIPHER_LFSR2_LENGTH - 1));
+			xorSum += ((pa51Cipher->lfsr3 & A51_CIPHER_LFSR3_MSB_MASK)
+					>> (A51_CIPHER_LFSR3_LENGTH - 1));
+
+			xorSum = xorSum & ((uint32) 0x00000001);
+
+			pa51Cipher->keyStream[i / 8] = pa51Cipher->keyStream[i / 8]
+					| xorSum << (i % 8);
+
+		}
+
 		keyStreamMask = keyStreamMask << 1;
+
+	}
+
+	if (generateKeyStream) {
+		for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
+			printf("keystream = 0x%x\n", pa51Cipher->keyStream[i]);
+		}
 
 	}
 
