@@ -8,6 +8,9 @@
 #ifndef A51_CIPHER_H_
 #define A51_CIPHER_H_
 
+#define true 1
+#define false 0
+
 #define A51_CIPHER_LFSR1_LENGTH (19)
 #define A51_CIPHER_LFSR2_LENGTH (22)
 #define A51_CIPHER_LFSR3_LENGTH (23)
@@ -48,6 +51,13 @@
 #define A51_CIPHER_LFSR3_TAP2_SHIFT ((uint32)21)
 #define A51_CIPHER_LFSR3_TAP3_SHIFT ((uint32)22)
 
+#define A51_CIPHER_LFSR1_IRREGULAR_CLOCK_MASK ((uint32)0x00000100)
+#define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_MASK ((uint32)0x00000400)
+#define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_MASK ((uint32)0x00000400)
+
+#define A51_CIPHER_LFSR1_IRREGULAR_CLOCK_SHIFT ((uint32)8)
+#define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_SHIFT ((uint32)10)
+#define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_SHIFT ((uint32)10)
 
 typedef unsigned char uint8;
 typedef unsigned short int uint16;
@@ -58,10 +68,9 @@ typedef signed char sint8;
 typedef signed short int sint16;
 typedef signed int sint32;
 typedef signed long int sint64;
+typedef int bool;
 
-
-struct A51Cipher
-{
+struct A51Cipher {
 	uint32 lfsr1;
 	uint32 lfsr2;
 	uint32 lfsr3;
@@ -73,6 +82,19 @@ struct A51Cipher
 
 void initA51Cipher(struct A51Cipher* pa51Cipher);
 
-void runLoop(struct A51Cipher* pa51Cipher,uint64 keyStream,uint64 keyStreamMask,uint32 keystreamLength);
+void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
+		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock);
+
+void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
+		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
+
+void clockRegisterOne(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
+		uint64 keyStreamMask, uint32 keystreamLength);
+
+void clockRegisterTwo(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
+		uint64 keyStreamMask, uint32 keystreamLength);
+
+void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
+		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
 
 #endif /* A51_CIPHER_H_ */
