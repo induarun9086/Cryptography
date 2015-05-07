@@ -87,6 +87,8 @@ struct A51Cipher {
 
 	uint8 keyStream[A51_CIPHER_KEY_STREAM_ARRAY_LENGTH];
 	uint8 dataStream[A51_CIPHER_KEY_STREAM_ARRAY_LENGTH];
+	uint8 outputStream[A51_CIPHER_KEY_STREAM_ARRAY_LENGTH];
+
 };
 
 void initA51Cipher(struct A51Cipher* pa51Cipher);
@@ -108,5 +110,7 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
 
 void generateKeyStream(struct A51Cipher* pa51Cipher);
+
+void encryptDataBits(struct A51Cipher* pa51Cipher,FILE* output_file);
 
 #endif /* A51_CIPHER_H_ */

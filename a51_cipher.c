@@ -14,6 +14,10 @@
 int main(int argc, char* argv[]) {
 	struct A51Cipher a51Cipher;
 	FILE* input_file = NULL;
+	FILE* output_file = NULL;
+	uint32 i;
+	uint8 dataBits;
+	uint32 file_Length;
 
 	memset(&a51Cipher, 0, sizeof(struct A51Cipher));
 
@@ -21,14 +25,29 @@ int main(int argc, char* argv[]) {
 
 	input_file = fopen("DSC01338.JPG", "rb");
 
-
+	output_file = fopen("encrypted_data.txt", "wb");
 
 	if (input_file != NULL) {
-		a51Cipher.sessionKey = 0x5cd11d783ab2f472;
-		initA51Cipher(&a51Cipher);
-		generateKeyStream(&a51Cipher);
-		fread(&a51Cipher.dataStream[0],A51_CIPHER_KEY_STREAM_ARRAY_LENGTH,1,input_file);
+		fseek(input_file, 0, SEEK_END);
+		file_Length = ftell(input_file);
+		fseek(input_file, 0, SEEK_SET);
+
+		//printf("File Length = 0x%x\n", file_Length);
+
+		for (i = 0; i < file_Length; i += dataBits) {
+
+			a51Cipher.sessionKey = 0x5cd11d783ab2f472;
+			initA51Cipher(&a51Cipher);
+			generateKeyStream(&a51Cipher);
+
+			dataBits = fread(&a51Cipher.dataStream[0], 1,
+			A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, input_file);
+
+			encryptDataBits(&a51Cipher,output_file);
+
+		}
 	}
+	fclose(output_file);
 	return 0;
 }
 
@@ -37,7 +56,9 @@ void initA51Cipher(struct A51Cipher* pa51Cipher) {
 	A51_CIPHER_SESSIONKEY_LENGTH, false, false);
 	runLoop(pa51Cipher, pa51Cipher->frameCounter, A51_CIPHER_FRAMECOUNTER_MASK,
 	A51_CIPHER_FRAMECOUNTER_LENGTH, false, false);
+	pa51Cipher->frameCounter = pa51Cipher->frameCounter +1;
 	runLoop(pa51Cipher, 0, 0, 100, true, false);
+
 }
 
 void generateKeyStream(struct A51Cipher* pa51Cipher) {
@@ -84,16 +105,16 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 
 	}
 
-	if (generateKeyStream) {
-		for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
-			printf("keystream = 0x%x\n", pa51Cipher->keyStream[i]);
-		}
+	/*if (generateKeyStream) {
+	 for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
+	 printf("keystream = 0x%x\n", pa51Cipher->keyStream[i]);
+	 }
 
-	}
+	 }
 
-	printf("LFSR 1 = 0x%x\n", pa51Cipher->lfsr1);
-	printf("LFSR 2 = 0x%x\n", pa51Cipher->lfsr2);
-	printf("LFSR 3 = 0x%x\n\n", pa51Cipher->lfsr3);
+	 printf("LFSR 1 = 0x%x\n", pa51Cipher->lfsr1);
+	 printf("LFSR 2 = 0x%x\n", pa51Cipher->lfsr2);
+	 printf("LFSR 3 = 0x%x\n\n", pa51Cipher->lfsr3);*/
 }
 
 void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
@@ -119,23 +140,23 @@ void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
 		majority = 1;
 	}
 
-	printf("bit1 = 0x%x\n", bit1);
-	printf("bit2 = 0x%x\n", bit2);
-	printf("bit3 = 0x%x\n\n", bit3);
-	printf("majority Bit is = 0x%x\n\n", majority);
+	/*printf("bit1 = 0x%x\n", bit1);
+	 printf("bit2 = 0x%x\n", bit2);
+	 printf("bit3 = 0x%x\n\n", bit3);
+	 printf("majority Bit is = 0x%x\n\n", majority);*/
 
 	if ((bit1 != 0) == majority) {
-		printf("clock register one \n");
+		//printf("clock register one \n");
 		clockRegisterOne(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
 	if ((bit2 != 0) == majority) {
-		printf("clock register two \n");
+		//printf("clock register two \n");
 		clockRegisterTwo(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
 	if ((bit3 != 0) == majority) {
-		printf("clock register three \n");
+		//printf("clock register three \n");
 		clockRegisterThree(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
@@ -195,4 +216,21 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 	pa51Cipher->lfsr3 = pa51Cipher->lfsr3 << 1;
 	pa51Cipher->lfsr3 = pa51Cipher->lfsr3 & ((uint32) 0xfffffffe);
 	pa51Cipher->lfsr3 = pa51Cipher->lfsr3 | xorSum;
+}
+
+void encryptDataBits(struct A51Cipher* pa51Cipher,FILE* output_file) {
+	uint32 i;
+	for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
+		pa51Cipher->outputStream[i] = pa51Cipher->dataStream[i]
+				^ pa51Cipher->keyStream[i];
+
+		printf("dataStream[%d]=0x%x\n", i, pa51Cipher->dataStream[i]);
+		printf("keyStream[%d]=0x%x\n", i, pa51Cipher->keyStream[i]);
+		printf("outputStream[%d]=0x%x\n\n", i, pa51Cipher->outputStream[i]);
+
+	}
+
+	fwrite(pa51Cipher->outputStream, 1,
+								A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, output_file);
+
 }
