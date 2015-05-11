@@ -8,61 +8,75 @@
 #ifndef A51_CIPHER_H_
 #define A51_CIPHER_H_
 
+/* macro for boolean true and false*/
 #define true 1
 #define false 0
 
+/* Length of three registers*/
 #define A51_CIPHER_LFSR1_LENGTH (19)
 #define A51_CIPHER_LFSR2_LENGTH (22)
 #define A51_CIPHER_LFSR3_LENGTH (23)
 
-#define A51_CIPHER_LFSR1_MASK ((uint32)0x0007ffff)
-#define A51_CIPHER_LFSR2_MASK ((uint32)0x003fffff)
-#define A51_CIPHER_LFSR3_MASK ((uint32)0x007fffff)
+/* mask for the registers*/
+#define A51_CIPHER_LFSR1_MASK ((uint32)0x0007ffff) /*19 Bits*/
+#define A51_CIPHER_LFSR2_MASK ((uint32)0x003fffff) /*23 Bits*/
+#define A51_CIPHER_LFSR3_MASK ((uint32)0x007fffff) /*22 Bits*/
 
+/*Session Key Length and mask*/
 #define A51_CIPHER_SESSIONKEY_LENGTH (64)
 #define A51_CIPHER_SESSIONKEY_MASK ((uint64)0x0000000000000001)
 
+/*Session frame counter and mask*/
 #define A51_CIPHER_FRAMECOUNTER_LENGTH (23)
 #define A51_CIPHER_FRAMECOUNTER_MASK ((uint32)0x00000001)
 
-#define A51_CIPHER_LFSR1_TAP0_MASK ((uint32)0x00002000)
-#define A51_CIPHER_LFSR1_TAP1_MASK ((uint32)0x00010000)
-#define A51_CIPHER_LFSR1_TAP2_MASK ((uint32)0x00020000)
-#define A51_CIPHER_LFSR1_TAP3_MASK ((uint32)0x00040000)
+/*Feedback taps for clocking shift register-1*/
+#define A51_CIPHER_LFSR1_TAP0_MASK ((uint32)0x00002000) /*Bit 13*/
+#define A51_CIPHER_LFSR1_TAP1_MASK ((uint32)0x00010000) /*Bit 16*/
+#define A51_CIPHER_LFSR1_TAP2_MASK ((uint32)0x00020000) /*Bit 17*/
+#define A51_CIPHER_LFSR1_TAP3_MASK ((uint32)0x00040000) /*Bit 18*/
 
 #define A51_CIPHER_LFSR1_TAP0_SHIFT ((uint32)13)
 #define A51_CIPHER_LFSR1_TAP1_SHIFT ((uint32)16)
 #define A51_CIPHER_LFSR1_TAP2_SHIFT ((uint32)17)
 #define A51_CIPHER_LFSR1_TAP3_SHIFT ((uint32)18)
 
-#define A51_CIPHER_LFSR2_TAP0_MASK ((uint32)0x00100000)
-#define A51_CIPHER_LFSR2_TAP1_MASK ((uint32)0x00200000)
+/*Feedback taps for clocking shift register-2*/
+#define A51_CIPHER_LFSR2_TAP0_MASK ((uint32)0x00100000) /*Bit 20*/
+#define A51_CIPHER_LFSR2_TAP1_MASK ((uint32)0x00200000) /*Bit 21*/
 
 #define A51_CIPHER_LFSR2_TAP0_SHIFT ((uint32)20)
 #define A51_CIPHER_LFSR2_TAP1_SHIFT ((uint32)21)
 
-#define A51_CIPHER_LFSR3_TAP0_MASK ((uint32)0x00000080)
-#define A51_CIPHER_LFSR3_TAP1_MASK ((uint32)0x00100000)
-#define A51_CIPHER_LFSR3_TAP2_MASK ((uint32)0x00200000)
-#define A51_CIPHER_LFSR3_TAP3_MASK ((uint32)0x00400000)
+/*Feedback taps for clocking shift register-3*/
+#define A51_CIPHER_LFSR3_TAP0_MASK ((uint32)0x00000080)/*Bit 07*/
+#define A51_CIPHER_LFSR3_TAP1_MASK ((uint32)0x00100000)/*Bit 20*/
+#define A51_CIPHER_LFSR3_TAP2_MASK ((uint32)0x00200000)/*Bit 21*/
+#define A51_CIPHER_LFSR3_TAP3_MASK ((uint32)0x00400000)/*Bit 22*/
 
 #define A51_CIPHER_LFSR3_TAP0_SHIFT ((uint32)7)
 #define A51_CIPHER_LFSR3_TAP1_SHIFT ((uint32)20)
 #define A51_CIPHER_LFSR3_TAP2_SHIFT ((uint32)21)
 #define A51_CIPHER_LFSR3_TAP3_SHIFT ((uint32)22)
 
-#define A51_CIPHER_LFSR1_IRREGULAR_CLOCK_MASK ((uint32)0x00000100)
-#define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_MASK ((uint32)0x00000400)
-#define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_MASK ((uint32)0x00000400)
+/*clocking Bit while executing irregular clocking 100 times */
+#define A51_CIPHER_LFSR1_IRREGULAR_CLOCK_MASK ((uint32)0x00000100) /*Bit 8*/
+#define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_MASK ((uint32)0x00000400) /*Bit 10*/
+#define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_MASK ((uint32)0x00000400) /*Bit 10*/
 
 #define A51_CIPHER_LFSR1_IRREGULAR_CLOCK_SHIFT ((uint32)8)
 #define A51_CIPHER_LFSR2_IRREGULAR_CLOCK_SHIFT ((uint32)10)
 #define A51_CIPHER_LFSR3_IRREGULAR_CLOCK_SHIFT ((uint32)10)
 
+/*Taps for output generation*/
 #define A51_CIPHER_LFSR1_MSB_MASK ((uint32)0x00040000)
 #define A51_CIPHER_LFSR2_MSB_MASK ((uint32)0x00200000)
 #define A51_CIPHER_LFSR3_MSB_MASK ((uint32)0x00400000)
 
+/*Length of the keystream */
+#define A51_CIPHER_KEY_STREAM_LENGTH (228)
+
+/*Length of each bit of the keystream 228/8 = 29 */
 #define A51_CIPHER_KEY_STREAM_ARRAY_LENGTH (29)
 
 typedef unsigned char uint8;

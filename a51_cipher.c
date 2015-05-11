@@ -13,12 +13,19 @@
 
 int main(int argc, char* argv[]) {
 
+
+	//Initialise variables
+
 	char inputFileName[100];
 	char outputFileName[100];
+
 	struct A51Cipher a51Cipher;
+
 	FILE* input_file = NULL;
 	FILE* output_file = NULL;
+
 	uint32 i;
+
 	uint8 dataBits;
 	uint32 file_Length;
 
@@ -26,9 +33,13 @@ int main(int argc, char* argv[]) {
 
 	printf("A5/1 Implementation\n");
 
+	//Get the input file name - Encryption - Image to be Encrypted
+	//                          Decryption - Encryped Data file
 	printf("Enter the input file name: \n");
 	scanf("%s", inputFileName);
 
+	//Get the output file name - Encryption - File in which encrypted data to be stored
+	//                           Decryption - File in which original image is stored
 	printf("Enter the output file name: \n");
 	scanf("%s", outputFileName);
 
@@ -37,6 +48,8 @@ int main(int argc, char* argv[]) {
 	output_file = fopen(outputFileName, "wb");
 
 	if (input_file != NULL) {
+
+		// Get the length of the input file
 		fseek(input_file, 0, SEEK_END);
 		file_Length = ftell(input_file);
 		fseek(input_file, 0, SEEK_SET);
@@ -46,7 +59,11 @@ int main(int argc, char* argv[]) {
 		for (i = 0; i < file_Length; i += dataBits) {
 
 			a51Cipher.sessionKey = 0x5cd11d783ab2f472;
+
+			//This method initialises the three registers
 			initA51Cipher(&a51Cipher);
+
+			// generates the keystream
 			generateKeyStream(&a51Cipher);
 
 			dataBits = fread(&a51Cipher.dataStream[0], 1,
@@ -62,17 +79,29 @@ int main(int argc, char* argv[]) {
 }
 
 void initA51Cipher(struct A51Cipher* pa51Cipher) {
+
+	// runLoop is the method which will xor the feedback taps for sessionkey,framecounter
+
+	// Run the loop for session key
 	runLoop(pa51Cipher, pa51Cipher->sessionKey, A51_CIPHER_SESSIONKEY_MASK,
 	A51_CIPHER_SESSIONKEY_LENGTH, false, false);
+
+	// Run the loop for frame counter
 	runLoop(pa51Cipher, pa51Cipher->frameCounter, A51_CIPHER_FRAMECOUNTER_MASK,
 	A51_CIPHER_FRAMECOUNTER_LENGTH, false, false);
+	//Increment the frame counter for next looping
 	pa51Cipher->frameCounter = pa51Cipher->frameCounter + 1;
+
+	//Run the loop for 100 times irregular clocking
 	runLoop(pa51Cipher, 0, 0, 100, true, false);
 
 }
 
 void generateKeyStream(struct A51Cipher* pa51Cipher) {
-	runLoop(pa51Cipher, 0, 0, 228, true, true);
+
+	//Registers are clocked 228 times with irregular clocking
+	//output of each register is xored to produce 228 bits long keystream
+	runLoop(pa51Cipher, 0, 0, A51_CIPHER_KEY_STREAM_LENGTH, true, true);
 
 }
 
@@ -82,20 +111,32 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 	uint32 i;
 
 	for (i = 0; i < keystreamLength; i++) {
+		// This if block will run during regular clocking
+		// for session key and frame counter
 		if (!irregularClock) {
+			// For regular clocking all the three registers will be clocked
+			// clock the register 1
 			clockRegisterOne(pa51Cipher, i, keyStream, keyStreamMask,
 					keystreamLength);
+
+			// clock the register 2
 			clockRegisterTwo(pa51Cipher, i, keyStream, keyStreamMask,
 					keystreamLength);
+
+			// clock the register 3
 			clockRegisterThree(pa51Cipher, i, keyStream, keyStreamMask,
 					keystreamLength);
 
 		} else {
+			// In irregular clocking
+			// only the registers having the majority of the clocking bit is clocked
+			// clocking Bit (Bit 8 in LFSR1, Bit 10 in LFSR2,Bit 10 in LFSR3)
 			executeIrregularClockBlock(pa51Cipher, i, keyStream, keyStreamMask,
 					keystreamLength);
 		}
 
 		if (generateKeyStream) {
+			// xor output of all the registers
 			uint32 xorSum = 0;
 			xorSum += ((pa51Cipher->lfsr1 & A51_CIPHER_LFSR1_MSB_MASK)
 					>> (A51_CIPHER_LFSR1_LENGTH - 1));
@@ -174,6 +215,8 @@ void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
 
 void clockRegisterOne(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
 		uint64 keyStreamMask, uint32 keystreamLength) {
+
+	// Xor the feedback tap Bits 13,16,17,18
 	uint32 xorSum = 0;
 	xorSum += ((keyStream & keyStreamMask) >> i);
 	xorSum += ((pa51Cipher->lfsr1 & A51_CIPHER_LFSR1_TAP0_MASK)
