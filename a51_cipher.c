@@ -12,6 +12,9 @@
 #include "a51_cipher.h"
 
 int main(int argc, char* argv[]) {
+
+	char inputFileName[100];
+	char outputFileName[100];
 	struct A51Cipher a51Cipher;
 	FILE* input_file = NULL;
 	FILE* output_file = NULL;
@@ -23,9 +26,15 @@ int main(int argc, char* argv[]) {
 
 	printf("A5/1 Implementation\n");
 
-	input_file = fopen("DSC01338.JPG", "rb");
+	printf("Enter the input file name: \n");
+	scanf("%s", inputFileName);
 
-	output_file = fopen("encrypted_data.txt", "wb");
+	printf("Enter the output file name: \n");
+	scanf("%s", outputFileName);
+
+	input_file = fopen(inputFileName, "rb");
+
+	output_file = fopen(outputFileName, "wb");
 
 	if (input_file != NULL) {
 		fseek(input_file, 0, SEEK_END);
@@ -43,11 +52,12 @@ int main(int argc, char* argv[]) {
 			dataBits = fread(&a51Cipher.dataStream[0], 1,
 			A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, input_file);
 
-			encryptDataBits(&a51Cipher,output_file);
+			encryptDataBits(&a51Cipher, output_file);
 
 		}
 	}
 	fclose(output_file);
+	printf("Completed");
 	return 0;
 }
 
@@ -56,7 +66,7 @@ void initA51Cipher(struct A51Cipher* pa51Cipher) {
 	A51_CIPHER_SESSIONKEY_LENGTH, false, false);
 	runLoop(pa51Cipher, pa51Cipher->frameCounter, A51_CIPHER_FRAMECOUNTER_MASK,
 	A51_CIPHER_FRAMECOUNTER_LENGTH, false, false);
-	pa51Cipher->frameCounter = pa51Cipher->frameCounter +1;
+	pa51Cipher->frameCounter = pa51Cipher->frameCounter + 1;
 	runLoop(pa51Cipher, 0, 0, 100, true, false);
 
 }
@@ -218,19 +228,19 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 	pa51Cipher->lfsr3 = pa51Cipher->lfsr3 | xorSum;
 }
 
-void encryptDataBits(struct A51Cipher* pa51Cipher,FILE* output_file) {
+void encryptDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
 	uint32 i;
 	for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
 		pa51Cipher->outputStream[i] = pa51Cipher->dataStream[i]
 				^ pa51Cipher->keyStream[i];
 
-		printf("dataStream[%d]=0x%x\n", i, pa51Cipher->dataStream[i]);
-		printf("keyStream[%d]=0x%x\n", i, pa51Cipher->keyStream[i]);
-		printf("outputStream[%d]=0x%x\n\n", i, pa51Cipher->outputStream[i]);
+		/*printf("dataStream[%d]=0x%x\n", i, pa51Cipher->dataStream[i]);
+		 printf("keyStream[%d]=0x%x\n", i, pa51Cipher->keyStream[i]);
+		 printf("outputStream[%d]=0x%x\n\n", i, pa51Cipher->outputStream[i]);*/
 
 	}
 
 	fwrite(pa51Cipher->outputStream, 1,
-								A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, output_file);
+	A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, output_file);
 
 }
