@@ -88,7 +88,7 @@ typedef signed char sint8;
 typedef signed short int sint16;
 typedef signed int sint32;
 typedef signed long int sint64;
-typedef int bool;
+typedef int boolean;
 
 struct A51Cipher {
 	uint32 lfsr1;
@@ -105,11 +105,17 @@ struct A51Cipher {
 
 };
 
+struct rwBitsData{
+	uint8 numBits;
+	uint8 tempByte;
+	uint8 numBitsShortage;
+};
+
 void initA51Cipher(struct A51Cipher* pa51Cipher);
 
 void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
-		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock,
-		bool generateKeyStream);
+		uint64 keyStreamMask, uint32 keystreamLength, boolean irregularClock,
+		boolean generateKeyStream);
 
 void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
 		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength);
@@ -126,5 +132,9 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 void generateKeyStream(struct A51Cipher* pa51Cipher);
 
 void encryptDataBits(struct A51Cipher* pa51Cipher,FILE* output_file);
+
+uint8 readBits(uint8* pDataStream,uint16 numBits, FILE* inputFile,struct rwBitsData* prwBitsData);
+
+uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile, struct rwBitsData* prwBitsData);
 
 #endif /* A51_CIPHER_H_ */

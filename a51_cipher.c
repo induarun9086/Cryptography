@@ -8,11 +8,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "a51_cipher.h"
 
 int main(int argc, char* argv[]) {
-
 
 	//Initialise variables
 
@@ -20,28 +20,34 @@ int main(int argc, char* argv[]) {
 	char outputFileName[100];
 
 	struct A51Cipher a51Cipher;
+	struct rwBitsData rBitsData;
+	struct rwBitsData wBitsData;
 
 	FILE* input_file = NULL;
 	FILE* output_file = NULL;
 
 	uint32 i;
 
-	uint8 dataBits;
+	uint8 numBytesRead;
 	uint32 file_Length;
 
 	memset(&a51Cipher, 0, sizeof(struct A51Cipher));
+	memset(&rBitsData, 0, sizeof(struct rwBitsData));
+	memset(&wBitsData, 0, sizeof(struct rwBitsData));
 
 	printf("A5/1 Implementation\n");
 
 	//Get the input file name - Encryption - Image to be Encrypted
 	//                          Decryption - Encryped Data file
-	printf("Enter the input file name: \n");
-	scanf("%s", inputFileName);
+	//printf("Enter the input file name: \n");
+	//scanf("%s", inputFileName);
+	strcpy(inputFileName, argv[1]);
 
 	//Get the output file name - Encryption - File in which encrypted data to be stored
 	//                           Decryption - File in which original image is stored
-	printf("Enter the output file name: \n");
-	scanf("%s", outputFileName);
+	//printf("Enter the output file name: \n");
+	//scanf("%s", outputFileName);
+	strcpy(outputFileName, argv[2]);
 
 	input_file = fopen(inputFileName, "rb");
 
@@ -56,7 +62,7 @@ int main(int argc, char* argv[]) {
 
 		//printf("File Length = 0x%x\n", file_Length);
 
-		for (i = 0; i < file_Length; i += dataBits) {
+		for (i = 0; i < file_Length; i += numBytesRead) {
 
 			a51Cipher.sessionKey = 0x5cd11d783ab2f472;
 
@@ -66,10 +72,15 @@ int main(int argc, char* argv[]) {
 			// generates the keystream
 			generateKeyStream(&a51Cipher);
 
-			dataBits = fread(&a51Cipher.dataStream[0], 1,
-			A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, input_file);
+			numBytesRead = readBits(&a51Cipher.dataStream[0],
+			A51_CIPHER_KEY_STREAM_LENGTH, input_file, &rBitsData);
 
 			encryptDataBits(&a51Cipher, output_file);
+
+			writeBits(&a51Cipher.outputStream[0], A51_CIPHER_KEY_STREAM_LENGTH,
+					  output_file, &wBitsData);
+
+			printf("Processing %d %% \r", (((i+numBytesRead)*100)/file_Length));
 
 		}
 	}
@@ -106,8 +117,8 @@ void generateKeyStream(struct A51Cipher* pa51Cipher) {
 }
 
 void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
-		uint64 keyStreamMask, uint32 keystreamLength, bool irregularClock,
-		bool generateKeyStream) {
+		uint64 keyStreamMask, uint32 keystreamLength, boolean irregularClock,
+		boolean generateKeyStream) {
 	uint32 i;
 
 	for (i = 0; i < keystreamLength; i++) {
@@ -136,7 +147,6 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 		}
 
 		if (generateKeyStream) {
-			// xor output of all the registers
 			uint32 xorSum = 0;
 			xorSum += ((pa51Cipher->lfsr1 & A51_CIPHER_LFSR1_MSB_MASK)
 					>> (A51_CIPHER_LFSR1_LENGTH - 1));
@@ -282,8 +292,98 @@ void encryptDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
 		 printf("outputStream[%d]=0x%x\n\n", i, pa51Cipher->outputStream[i]);*/
 
 	}
+}
 
-	fwrite(pa51Cipher->outputStream, 1,
-	A51_CIPHER_KEY_STREAM_ARRAY_LENGTH, output_file);
+uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
+		struct rwBitsData* prwBitsData) {
+	uint8 tempByte;
+	uint8 i;
+	uint16 numBytesReq = (uint16)ceil((double)numBits / 8.0);
+	uint16 numBytes = (uint16)ceil(((double)numBits - (double)prwBitsData->numBits) / 8.0);
 
+	uint8 numBytesRead = fread(pDataStream, 1, numBytes, inputFile);
+	if (numBytesRead > 0)
+	{
+		for (i = 0; i < numBytesReq; i++)
+		{
+			if(i < numBytesRead)
+			{
+				tempByte = pDataStream[i];
+			}
+			else
+			{
+				tempByte = 0;
+				pDataStream[i] = 0;
+		    }
+
+			//printf("i:%02d, ip:0x%02x, ", i, pDataStream[i]);
+
+			prwBitsData->tempByte = prwBitsData->tempByte >> (8 - prwBitsData->numBits);
+			pDataStream[i] = pDataStream[i] << (prwBitsData->numBits);
+			pDataStream[i] = pDataStream[i] | prwBitsData->tempByte;
+			prwBitsData->tempByte = tempByte;
+
+			if((numBits - (i*8))  < 8)
+			{
+			  if(i < numBytesRead)
+			  {
+			      prwBitsData->numBits = (numBits - (i*8));
+			  }
+			  else
+			  {
+				  prwBitsData->numBits = 0;
+			  }
+
+			  pDataStream[i] = pDataStream[i] & ((uint8)(0xFF) >> (numBits - (i*8)));
+			}
+
+			//printf("op:0x%02x, t:0x%02x; ", pDataStream[i], prwBitsData->tempByte);
+		}
+
+		//printf("\n0x%02x, nt:%02d\n", prwBitsData->tempByte, prwBitsData->numBits);
+	}
+
+	return numBytesRead;
+}
+
+
+uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile,
+		struct rwBitsData* prwBitsData) {
+	uint8 tempByte;
+	uint8 i;
+	uint16 numBytesGn = (uint16)ceil((double)numBits / 8.0);
+	uint16 numBytesWrite = (uint16)floor(((double)numBits + (double)prwBitsData->numBits) / 8.0);
+
+	for (i = 0; i < numBytesGn; i++)
+	{
+		//printf("i:%02d, ip:0x%02x, ", i, pDataStream[i]);
+		tempByte = pDataStream[i];
+		pDataStream[i] = pDataStream[i] << prwBitsData->numBits;
+		prwBitsData->tempByte = prwBitsData->tempByte >> ((8 - prwBitsData->numBitsShortage) - prwBitsData->numBits);
+		pDataStream[i] = pDataStream[i] | prwBitsData->tempByte;
+		prwBitsData->tempByte = tempByte;
+		prwBitsData->numBitsShortage = 0;
+
+		if((numBits - (i*8))  < 8)
+		{
+		  if(i < numBytesWrite)
+		  {
+			  prwBitsData->numBits = 0;
+		  }
+		  else
+		  {
+			  prwBitsData->numBits = (numBits - (i*8));
+			  prwBitsData->numBitsShortage = (8 - prwBitsData->numBits);
+		  }
+		}
+
+		//printf("op:0x%02x, t:0x%02x; ", pDataStream[i], prwBitsData->tempByte);
+	}
+
+	//printf("\n0x%02x, nt:%02d, w:%02d\n", prwBitsData->tempByte, prwBitsData->numBits, numBytesWrite);
+	//scanf("%c", &tempByte);
+
+	fwrite(pDataStream, 1, numBytesWrite, outputFile);
+
+	return numBytesWrite;
 }
