@@ -39,14 +39,12 @@ int main(int argc, char* argv[]) {
 
 	//Get the input file name - Encryption - Image to be Encrypted
 	//                          Decryption - Encryped Data file
-	//printf("Enter the input file name: \n");
-	//scanf("%s", inputFileName);
+
 	strcpy(inputFileName, argv[1]);
 
 	//Get the output file name - Encryption - File in which encrypted data to be stored
 	//                           Decryption - File in which original image is stored
-	//printf("Enter the output file name: \n");
-	//scanf("%s", outputFileName);
+
 	strcpy(outputFileName, argv[2]);
 
 	input_file = fopen(inputFileName, "rb");
@@ -60,11 +58,11 @@ int main(int argc, char* argv[]) {
 		file_Length = ftell(input_file);
 		fseek(input_file, 0, SEEK_SET);
 
-		//printf("File Length = 0x%x\n", file_Length);
-
 		for (i = 0; i < file_Length; i += numBytesRead) {
 
-			a51Cipher.sessionKey = 0x5cd11d783ab2f472;
+			a51Cipher.sessionKey = argv[3];
+
+			a51Cipher.frameCounter = argv[4];
 
 			//This method initialises the three registers
 			initA51Cipher(&a51Cipher);
@@ -146,6 +144,8 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 					keystreamLength);
 		}
 
+		// If the flag generateKeyStream is true, the output of each register is
+		// xor-ed to produce the keystream
 		if (generateKeyStream) {
 			uint32 xorSum = 0;
 			xorSum += ((pa51Cipher->lfsr1 & A51_CIPHER_LFSR1_MSB_MASK)
@@ -165,17 +165,6 @@ void runLoop(struct A51Cipher* pa51Cipher, uint64 keyStream,
 		keyStreamMask = keyStreamMask << 1;
 
 	}
-
-	/*if (generateKeyStream) {
-	 for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
-	 printf("keystream = 0x%x\n", pa51Cipher->keyStream[i]);
-	 }
-
-	 }
-
-	 printf("LFSR 1 = 0x%x\n", pa51Cipher->lfsr1);
-	 printf("LFSR 2 = 0x%x\n", pa51Cipher->lfsr2);
-	 printf("LFSR 3 = 0x%x\n\n", pa51Cipher->lfsr3);*/
 }
 
 void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
@@ -201,23 +190,16 @@ void executeIrregularClockBlock(struct A51Cipher* pa51Cipher, uint32 i,
 		majority = 1;
 	}
 
-	/*printf("bit1 = 0x%x\n", bit1);
-	 printf("bit2 = 0x%x\n", bit2);
-	 printf("bit3 = 0x%x\n\n", bit3);
-	 printf("majority Bit is = 0x%x\n\n", majority);*/
 
 	if ((bit1 != 0) == majority) {
-		//printf("clock register one \n");
 		clockRegisterOne(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
 	if ((bit2 != 0) == majority) {
-		//printf("clock register two \n");
 		clockRegisterTwo(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
 	if ((bit3 != 0) == majority) {
-		//printf("clock register three \n");
 		clockRegisterThree(pa51Cipher, i, keyStream, keyStreamMask,
 				keystreamLength);
 	}
@@ -286,11 +268,6 @@ void encryptDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
 	for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
 		pa51Cipher->outputStream[i] = pa51Cipher->dataStream[i]
 				^ pa51Cipher->keyStream[i];
-
-		/*printf("dataStream[%d]=0x%x\n", i, pa51Cipher->dataStream[i]);
-		 printf("keyStream[%d]=0x%x\n", i, pa51Cipher->keyStream[i]);
-		 printf("outputStream[%d]=0x%x\n\n", i, pa51Cipher->outputStream[i]);*/
-
 	}
 }
 
@@ -316,8 +293,6 @@ uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 				pDataStream[i] = 0;
 		    }
 
-			//printf("i:%02d, ip:0x%02x, ", i, pDataStream[i]);
-
 			prwBitsData->tempByte = prwBitsData->tempByte >> (8 - prwBitsData->numBits);
 			pDataStream[i] = pDataStream[i] << (prwBitsData->numBits);
 			pDataStream[i] = pDataStream[i] | prwBitsData->tempByte;
@@ -336,11 +311,7 @@ uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 
 			  pDataStream[i] = pDataStream[i] & ((uint8)(0xFF) >> (numBits - (i*8)));
 			}
-
-			//printf("op:0x%02x, t:0x%02x; ", pDataStream[i], prwBitsData->tempByte);
 		}
-
-		//printf("\n0x%02x, nt:%02d\n", prwBitsData->tempByte, prwBitsData->numBits);
 	}
 
 	return numBytesRead;
@@ -356,7 +327,6 @@ uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile,
 
 	for (i = 0; i < numBytesGn; i++)
 	{
-		//printf("i:%02d, ip:0x%02x, ", i, pDataStream[i]);
 		tempByte = pDataStream[i];
 		pDataStream[i] = pDataStream[i] << prwBitsData->numBits;
 		prwBitsData->tempByte = prwBitsData->tempByte >> ((8 - prwBitsData->numBitsShortage) - prwBitsData->numBits);
@@ -377,11 +347,7 @@ uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile,
 		  }
 		}
 
-		//printf("op:0x%02x, t:0x%02x; ", pDataStream[i], prwBitsData->tempByte);
 	}
-
-	//printf("\n0x%02x, nt:%02d, w:%02d\n", prwBitsData->tempByte, prwBitsData->numBits, numBytesWrite);
-	//scanf("%c", &tempByte);
 
 	fwrite(pDataStream, 1, numBytesWrite, outputFile);
 

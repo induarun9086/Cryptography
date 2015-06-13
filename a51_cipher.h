@@ -27,7 +27,7 @@
 #define A51_CIPHER_SESSIONKEY_MASK ((uint64)0x0000000000000001)
 
 /*Session frame counter and mask*/
-#define A51_CIPHER_FRAMECOUNTER_LENGTH (23)
+#define A51_CIPHER_FRAMECOUNTER_LENGTH (22)
 #define A51_CIPHER_FRAMECOUNTER_MASK ((uint32)0x00000001)
 
 /*Feedback taps for clocking shift register-1*/
