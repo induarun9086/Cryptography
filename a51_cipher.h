@@ -131,7 +131,7 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 
 void generateKeyStream(struct A51Cipher* pa51Cipher);
 
-void encryptDataBits(struct A51Cipher* pa51Cipher,FILE* output_file);
+void xorDataBits(struct A51Cipher* pa51Cipher,FILE* output_file);
 
 uint8 readBits(uint8* pDataStream,uint16 numBits, FILE* inputFile,struct rwBitsData* prwBitsData);
 

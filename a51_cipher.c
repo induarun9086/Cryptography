@@ -58,11 +58,19 @@ int main(int argc, char* argv[]) {
 		file_Length = ftell(input_file);
 		fseek(input_file, 0, SEEK_SET);
 
+		// Read the input session key and frme counter
+
+		a51Cipher.sessionKey = strtoull(argv[3],(char **)NULL,16);
+
+		printf("session key is : %lx \n", a51Cipher.sessionKey);
+
+		a51Cipher.frameCounter = strtoul(argv[4],(char **)NULL,16);
+
+		printf("Frame counter is : %x \n", a51Cipher.frameCounter);
+
+
 		for (i = 0; i < file_Length; i += numBytesRead) {
 
-			a51Cipher.sessionKey = argv[3];
-
-			a51Cipher.frameCounter = argv[4];
 
 			//This method initialises the three registers
 			initA51Cipher(&a51Cipher);
@@ -70,10 +78,12 @@ int main(int argc, char* argv[]) {
 			// generates the keystream
 			generateKeyStream(&a51Cipher);
 
+			// Read 228 bit chunks from the input file
 			numBytesRead = readBits(&a51Cipher.dataStream[0],
 			A51_CIPHER_KEY_STREAM_LENGTH, input_file, &rBitsData);
 
-			encryptDataBits(&a51Cipher, output_file);
+			// Encrypt or Decrypt data stream with key stream
+			xorDataBits(&a51Cipher, output_file);
 
 			writeBits(&a51Cipher.outputStream[0], A51_CIPHER_KEY_STREAM_LENGTH,
 					  output_file, &wBitsData);
@@ -229,6 +239,7 @@ void clockRegisterOne(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
 
 void clockRegisterTwo(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
 		uint64 keyStreamMask, uint32 keystreamLength) {
+	// Xor the feedback tap Bits 20,21
 	uint32 xorSum = 0;
 	xorSum += ((keyStream & keyStreamMask) >> i);
 	xorSum += ((pa51Cipher->lfsr2 & A51_CIPHER_LFSR2_TAP0_MASK)
@@ -245,6 +256,7 @@ void clockRegisterTwo(struct A51Cipher* pa51Cipher, uint32 i, uint64 keyStream,
 
 void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 		uint64 keyStream, uint64 keyStreamMask, uint32 keystreamLength) {
+	// Xor the feedback tap Bits 7,20,21,22
 	uint32 xorSum = 0;
 	xorSum += ((keyStream & keyStreamMask) >> i);
 	xorSum += ((pa51Cipher->lfsr3 & A51_CIPHER_LFSR3_TAP0_MASK)
@@ -263,7 +275,8 @@ void clockRegisterThree(struct A51Cipher* pa51Cipher, uint32 i,
 	pa51Cipher->lfsr3 = pa51Cipher->lfsr3 | xorSum;
 }
 
-void encryptDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
+// Encrypt/Decrypt the databits by xor-ing with keybits
+void xorDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
 	uint32 i;
 	for (i = 0; i < A51_CIPHER_KEY_STREAM_ARRAY_LENGTH; i++) {
 		pa51Cipher->outputStream[i] = pa51Cipher->dataStream[i]
@@ -271,13 +284,21 @@ void encryptDataBits(struct A51Cipher* pa51Cipher, FILE* output_file) {
 	}
 }
 
+// As the frame count used in the A5/1 cipher is 228, this translates to 28 bytes and 4 bits.
+//This is achieved by reading and writing in multiples of bytes and temporarily caching
+//the remaining bits and reading or writing them in the next call.
+
 uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 		struct rwBitsData* prwBitsData) {
 	uint8 tempByte;
 	uint8 i;
+	// convert bits to bytes
 	uint16 numBytesReq = (uint16)ceil((double)numBits / 8.0);
+
+	// how many to read including temp bytes
 	uint16 numBytes = (uint16)ceil(((double)numBits - (double)prwBitsData->numBits) / 8.0);
 
+	// Read the input file
 	uint8 numBytesRead = fread(pDataStream, 1, numBytes, inputFile);
 	if (numBytesRead > 0)
 	{
@@ -285,6 +306,7 @@ uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 		{
 			if(i < numBytesRead)
 			{
+				// store the next read byte for further processing
 				tempByte = pDataStream[i];
 			}
 			else
@@ -293,11 +315,13 @@ uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 				pDataStream[i] = 0;
 		    }
 
+			// shift the data as required
 			prwBitsData->tempByte = prwBitsData->tempByte >> (8 - prwBitsData->numBits);
 			pDataStream[i] = pDataStream[i] << (prwBitsData->numBits);
 			pDataStream[i] = pDataStream[i] | prwBitsData->tempByte;
 			prwBitsData->tempByte = tempByte;
 
+			// update the number of bytes read
 			if((numBits - (i*8))  < 8)
 			{
 			  if(i < numBytesRead)
@@ -309,6 +333,7 @@ uint8 readBits(uint8* pDataStream, uint16 numBits, FILE* inputFile,
 				  prwBitsData->numBits = 0;
 			  }
 
+			  // Limit the read bits to the number of requested bits
 			  pDataStream[i] = pDataStream[i] & ((uint8)(0xFF) >> (numBits - (i*8)));
 			}
 		}
@@ -322,11 +347,16 @@ uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile,
 		struct rwBitsData* prwBitsData) {
 	uint8 tempByte;
 	uint8 i;
+
+	// convert bits to bytes
 	uint16 numBytesGn = (uint16)ceil((double)numBits / 8.0);
+
+	// how many to read including temp bytes
 	uint16 numBytesWrite = (uint16)floor(((double)numBits + (double)prwBitsData->numBits) / 8.0);
 
 	for (i = 0; i < numBytesGn; i++)
 	{
+		// store the next read byte for further processing
 		tempByte = pDataStream[i];
 		pDataStream[i] = pDataStream[i] << prwBitsData->numBits;
 		prwBitsData->tempByte = prwBitsData->tempByte >> ((8 - prwBitsData->numBitsShortage) - prwBitsData->numBits);
@@ -349,6 +379,7 @@ uint8 writeBits(uint8* pDataStream, uint16 numBits, FILE* outputFile,
 
 	}
 
+	// write bits to the file
 	fwrite(pDataStream, 1, numBytesWrite, outputFile);
 
 	return numBytesWrite;
